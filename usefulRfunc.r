@@ -1,18 +1,31 @@
 #### FUNCTIONS ####
 
-### define function for doing and plotting PCA and heatmap 
-### of sample distances for rlog (DEseq2 function) transformed data
-PCA_heatm_plot=function(count_table,labels,regul="rlog")
-{
+### define function for making 1) sample distance heatmap and 2) PCA 
+PCA_heatm_plot=function(count_table, samples=NA, groups , 
+                        logtrans=F, title="PCA")
+  {
+  # sample - to use as labels of individual samples
+  # groups - experimental groups, e.g. wild-type and mutant
+  # logtrans - log transform the data
+  
   ### Estimate and plot eucledean disances between samples
   # !!!! remember that not TPM but count data shall be normalized with rlog !!!!
   library("RColorBrewer")
   library("pheatmap")  
-  library("DESeq2")  
   require(ggplot2)
-  if (regul=="rlog") rld <- rlogTransformation(as.matrix(count_table), blind=TRUE) else rld <- varianceStabilizingTransformation(as.matrix(count_table), blind=TRUE)
   
+  # define sample names as column names if sample names are not provided
+  if ( length(samples) == ncol(count_table)) colnames(count_table) <- samples else samples <- colnames(count_table)
+  
+  # select top 10 variable genes
+  count_table <- as.matrix(count_table)
+  count_table <- count_table[ which( rowVars(count_table) > quantile( rowVars(count_table) , 0.9)) ,  ]
+  
+  # log transform if necessary
+  if( isTRUE(logtrans)) rld <- log( count_table + 1 ) else rld <- count_table
   rownames(rld)=rownames(count_table)
+  
+  # calculate distances
   euclDists <- dist( t( rld ) )
   euclDistsMatrix <- as.matrix( euclDists )
   rownames(euclDistsMatrix) <- names(count_table)
@@ -21,19 +34,20 @@ PCA_heatm_plot=function(count_table,labels,regul="rlog")
   pheatmap(euclDistsMatrix,
            clustering_distance_rows=euclDists,
            clustering_distance_cols=euclDists,
-           col=colors,labels_row =labels)
+           col=colors , labels_row =  samples )
   
   
   ## PCA for count data rlog transform  using DEseq2 algorythm
   pr_comp_rnorm <- prcomp(t(rld),scale=F)
   #biplot(pr_comp_rnorm)
   XX = as.data.frame(pr_comp_rnorm$x)
-  g=qplot(x=PC1 , y=PC2 , data=XX , colour=factor(labels) , main="PCA of RNAseq samples") + geom_point(size=3)
+  g <- qplot( x=PC1, y=PC2, data=XX,  colour=factor(groups), main=title) + 
+    geom_point(size=4  ) 
   # labels and dots sizes
-  g+theme(axis.text=element_text(size=20),
-          axis.title=element_text( size=24,face="bold"), legend.text = element_text(size = 16),legend.title = element_text(size=24) )+
-    scale_size(range = c(5, 6)) + theme(legend.key.size = unit(1, "cm")) + labs(colour = "condition") +
-    geom_text( aes( label=rownames(XX) ) , hjust=0.4 , vjust=-0.8 , size=5 )
+  g+theme_bw() + theme(axis.text=element_text(size=20),
+                       axis.title=element_text(size=24,face="bold"), legend.text = element_text(size = 24),legend.title = element_text(size=24))+
+    scale_size(range = c(5, 6))+theme(legend.key.size = unit(2, "cm"))+ labs(colour = "condition")+
+    geom_text(aes(label=rownames(XX)),hjust=0.4, vjust=-0.8,size=5)
 }
 
 # ## file for UCSC <> ENSEMBLE chromosome name conversion
