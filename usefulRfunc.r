@@ -1,12 +1,15 @@
 #### FUNCTIONS ####
 
 ### define function for making 1) sample distance heatmap and 2) PCA 
-PCA_heatm_plot=function(count_table, sampleNames=NA, groups , 
+PCA_heatm_plot=function(count_table, sampleNames=NA,
+                        groupsExp ,
+                        topNprct=0.1 ,
                         logtrans=F, title="PCA")
-  {
-  # sample - a charachter vector to use as labels of individual samples
-  # groups - a charachter vector for experimental groups, e.g. wild-type and mutant
+{
+  # sampleNames - a charachter vector to use as labels of individual samples
+  # groupsExp - a charachter vector for experimental groups, e.g. wild-type and mutant
   # logtrans - logic value, whether log transform the data or not 
+  # topNprct - proportions of genes with highest variance to consider for PCA, 0.1 by default
   
   ### Estimate and plot eucledean disances between samples
   # !!!! remember that not TPM but count data shall be normalized with rlog !!!!
@@ -17,9 +20,9 @@ PCA_heatm_plot=function(count_table, sampleNames=NA, groups ,
   # define sample names as column names if sample names are not provided
   if ( length(sampleNames) == ncol(count_table)) colnames(count_table) <- sampleNames else sampleNames <- colnames(count_table)
   
-  # select top 10 variable genes
+  # select top {topNprct} portion of most variable genes
   count_table <- as.matrix(count_table)
-  count_table <- count_table[ which( rowVars(count_table) > quantile( rowVars(count_table) , 0.9)) ,  ]
+  count_table <- count_table[ which( rowVars(count_table) > quantile( rowVars(count_table) , 1-topNprct )) ,  ]
   
   # log transform if necessary
   if( isTRUE(logtrans)) rld <- log( count_table + 1 ) else rld <- count_table

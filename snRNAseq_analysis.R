@@ -1,5 +1,5 @@
 c# ############################################### #
-# ####### analysis of Wt1 mut. snRNAseq ####### #
+# ####### analysis of Nphs2 mut. snRNAseq ####### #
 # ############################################### #
 library(ggplot2)
 library(ggthemes)
@@ -138,7 +138,7 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
   
   
   # Podocyte markers
-  # https://www.rndsystems.com/resources/cell-markers/kidney-cells/podocytes/podocyte-markers
+  # https://www.rngdsystems.com/resources/cell-markers/kidney-cells/podocytes/podocyte-markers
   cowplot::plot_grid(p1,p2, p3, p4,p5,p6, ncol = 3)
   # saveRDS(sce_subs, file = "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_exon.Seurat.SubsTOviz.rda")
   sce_subs <- readRDS( file = "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_premRNA.Seurat.SubsTOviz.rda")
