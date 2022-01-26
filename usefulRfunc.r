@@ -1,12 +1,12 @@
 #### FUNCTIONS ####
 
 ### define function for making 1) sample distance heatmap and 2) PCA 
-PCA_heatm_plot=function(count_table, samples=NA, groups , 
+PCA_heatm_plot=function(count_table, sampleNames=NA, groups , 
                         logtrans=F, title="PCA")
   {
-  # sample - to use as labels of individual samples
-  # groups - experimental groups, e.g. wild-type and mutant
-  # logtrans - log transform the data
+  # sample - a charachter vector to use as labels of individual samples
+  # groups - a charachter vector for experimental groups, e.g. wild-type and mutant
+  # logtrans - logic value, whether log transform the data or not 
   
   ### Estimate and plot eucledean disances between samples
   # !!!! remember that not TPM but count data shall be normalized with rlog !!!!
@@ -15,7 +15,7 @@ PCA_heatm_plot=function(count_table, samples=NA, groups ,
   require(ggplot2)
   
   # define sample names as column names if sample names are not provided
-  if ( length(samples) == ncol(count_table)) colnames(count_table) <- samples else samples <- colnames(count_table)
+  if ( length(sampleNames) == ncol(count_table)) colnames(count_table) <- sampleNames else sampleNames <- colnames(count_table)
   
   # select top 10 variable genes
   count_table <- as.matrix(count_table)
@@ -34,7 +34,7 @@ PCA_heatm_plot=function(count_table, samples=NA, groups ,
   pheatmap(euclDistsMatrix,
            clustering_distance_rows=euclDists,
            clustering_distance_cols=euclDists,
-           col=colors , labels_row =  samples )
+           col=colors , labels_row =  sampleNames )
   
   
   ## PCA for count data rlog transform  using DEseq2 algorythm
