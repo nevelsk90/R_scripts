@@ -152,10 +152,10 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
   
   ### find markers
   sce_subsMarks <- FindAllMarkers( sce_subs )
-  saveRDS( sce_subsMarks, file="/home/tim_nevelsk/PROJECTS/PODOCYTE/RNAseq/snRNAseq_Wt1/FinalKFO/Seurat/snRNAseq_Wt1hd_premRNA.4w12w25w.clustMarks.rda")
+  saveRDS( sce_subsMarks, file="/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_premRNA.allSamples.clustMarks.rda")
   top10 <- sce_subsMarks %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
   # downsample the data  further for a better heatmap
-  sce_subs_subs <- subset( sce ,  downsample = 200  ) 
+  sce_subs_subs <- subset( sce_subs ,  downsample = 200  ) 
   # scale the data for all genes to avoid missing genes on the heatmap
   sce_subs_subs <- ScaleData(sce_subs_subs, features = rownames(sce_subs_subs) )
   DoHeatmap( sce_subs_subs, features = top10$gene) + NoLegend()
