@@ -42,9 +42,10 @@ PCA_heatm_plot=function(count_table, sampleNames=NA,
   
   ## PCA for count data rlog transform  using DEseq2 algorythm
   pr_comp_rnorm <- prcomp(t(rld),scale=F)
+  print( summary(pr_comp_rnorm))
   #biplot(pr_comp_rnorm)
   XX = as.data.frame(pr_comp_rnorm$x)
-  g <- qplot( x=PC1, y=PC2, data=XX,  colour=factor(groups), main=title) + 
+  g <- qplot( x=PC1, y=PC2, data=XX,  colour=factor(groupsExp), main=title) + 
     geom_point(size=4  ) 
   # labels and dots sizes
   g+theme_bw() + theme(axis.text=element_text(size=20),
