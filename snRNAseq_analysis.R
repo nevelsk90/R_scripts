@@ -169,9 +169,9 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
     sce_Podo <- readRDS( "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2mut.allSamples_premRNA.Seurat.Podo.rda" )
     set.seed(42)
     sce_subsPodo <- sce_Podo
-    Idents(sce_subsPodo) <- sce_subsPodo$orig.ident
-    sce_subsPodo <- subset( sce_subsPodo , downsample=500)
-    Idents(sce_subsPodo) <- sce_subsPodo$seurat_clusters
+    # Idents(sce_subsPodo) <- sce_subsPodo$orig.ident
+    # sce_subsPodo <- subset( sce_subsPodo , downsample=500)
+    # Idents(sce_subsPodo) <- sce_subsPodo$seurat_clusters
     
     ### PCA with podocytes
     {
@@ -197,31 +197,33 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
     }
     # sce_Podo <- subset( sce , idents=c(2,5,9,12 ))
     ### find variable features
-    sce_subsPodo <- FindVariableFeatures( sce_subsPodo , selection.method = "vst", nfeatures = 2000)
+    sce_Podo <- FindVariableFeatures( sce_Podo , selection.method = "vst", nfeatures = 2000)
     
     ### scale the data
-    sce_subsPodo <- ScaleData(sce_subsPodo)
+    sce_Podo <- ScaleData(sce_Podo)
     
     ### run PCA
-    sce_subsPodo <- RunPCA( sce_subsPodo , features = VariableFeatures( object = sce_subsPodo ) )
-    ElbowPlot( sce_subsPodo , ndims = 50 ) # choosing number of PCs to include 
+    sce_Podo <- RunPCA( sce_Podo , features = VariableFeatures( object = sce_Podo ) )
+    ElbowPlot( sce_Podo , ndims = 50 ) # choosing number of PCs to include 
 
     # cluster
-    sce_subsPodo <- FindNeighbors( sce_subsPodo, dims = 1:10)
-    sce_subsPodo <- FindClusters( sce_subsPodo, resolution = 0.1)
+    sce_Podo <- FindNeighbors( sce_Podo, dims = 1:10)
+    sce_Podo <- FindClusters( sce_Podo, resolution = 0.1)
     
     # run UMAP
-    sce_subsPodo <- RunUMAP( sce_subsPodo , dims = 1:10 )
+    sce_Podo <- RunUMAP( sce_Podo , dims = 1:10 )
     
     ### make plots
+    sce_subsPodo <- subset( sce_Podo , downsample=1000)
     sce_Podo_SCE <- as.SingleCellExperiment(sce_subsPodo)
     p1 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="seurat_clusters", point_size = 2   )
     p2 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="age", point_size = 2   )
     p3 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="gtype", point_size = 2   )
     p4 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="groups", point_size = 1   )
-    # p5 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="batches", point_size = 2  )
+    p5 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="Ephb1", point_size = 2  )
+    p6 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="Mafb", point_size = 2  )
     
-    cowplot::plot_grid(p1, p2, p3,p4, ncol = 2)
+    cowplot::plot_grid(p1, p2, p3,p4,p5,p6, ncol = 3)
   }
   
   ### do DE for podocytes
