@@ -9,6 +9,7 @@ library(Matrix)
 library(Seurat)
 library(biomaRt)
 library(SingleCellExperiment)
+library(matrixStats)
 
 source("PROJECTS/myCode/Read10X_STAR.r")
 source( "/home/tim_nevelsk/PROJECTS/myCode/usefulRfunc.r")
@@ -161,41 +162,118 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
   DoHeatmap( sce_subs_subs, features = top10$gene) + NoLegend()
   
   ### extract podocytes
-  sce_Podo <- subset( sce , idents=c(2,5,9,12 ))
+  sce_Podo <- subset( sce , idents=c( 2 , 5 ))
   # saveRDS( sce_Podo, "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2mut.allSamples_premRNA.Seurat.Podo.rda")
   
-  ### visualise podocytes 
+  ### compute doublets https://github.com/chris-mcginnis-ucsf/DoubletFinder
   {
-    sce_Podo <- readRDS( "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2mut.allSamples_premRNA.Seurat.Podo.rda" )
-    set.seed(42)
-    sce_subsPodo <- sce_Podo
-    # Idents(sce_subsPodo) <- sce_subsPodo$orig.ident
-    # sce_subsPodo <- subset( sce_subsPodo , downsample=500)
-    # Idents(sce_subsPodo) <- sce_subsPodo$seurat_clusters
+    library(DoubletFinder) 
+    library(ggplot2)
+    sce_subs <- readRDS("/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2mut.allSamples_premRNA.Seurat.Viz.rda")
+    ## pK Identification (no ground-truth) ---------------------------------------------------------------------------------------
+    sweep.res.list_kidney <- paramSweep_v3(sce_subs, PCs = 1:20, sct = FALSE)
+    sweep.stats_kidney <- summarizeSweep(sweep.res.list_kidney, GT = FALSE)
+    par(mar=c(5,5,2,2))
+    bcmvn_kidney <- find.pK(sweep.stats_kidney) # pK=0.26
     
-    ### PCA with podocytes
-    {
-      XX <- as.data.frame( t( sce_subsPodo@assays$RNA@counts))
-      XX$groups <- as.factor( sce_subsPodo$orig.ident)
-      XX <-   aggregate( .~ groups , data= XX, sum )
-      datPlot <- t(XX[,-1])
-      colnames(datPlot) <- XX[,1]
-      # normalise by library size 
-      datPlot <- t(t(datPlot) / colSums(datPlot))*1000000
-      
-      # # plot contribution of genes to PCs 
-      # factoextra::fviz_cos2( prcomp(t(log(datPlot+1)),scale=F), 
-      #                        choice = "var", axes = 1:2, top=20)
-      # 
-      
-      PCA_heatm_plot( count_table = datPlot , 
-                      sampleNames= levels( as.factor(paste(sce_subsPodo$orig.ident, sce_subsPodo$gtype, sce_subsPodo$age, sep = "_")))  , 
-                      groupsExp = c( "wt", "mut", "wt", "wt", "mut", "mut", "mut",
-                                     "wt","mut","wt","wt", "mut","mut","mut") , 
-                      logtrans= T , title="PCA on pseudobulk Nphs2 snRNAseq Podocytes",
-                      topNprct=0.1 )
-    }
-    # sce_Podo <- subset( sce , idents=c(2,5,9,12 ))
+    ## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
+    annotations <- sce_subs@meta.data$clust
+    homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+    nExp_poi <- round(0.1*nrow(sce_subs@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+    nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+    
+    # 
+    sce_subs <- doubletFinder_v3(sce_subs, PCs = 1:20, pN = 0.25, 
+                                 pK = 0.26, nExp = nExp_poi.adj, 
+                                 reuse.pANN = FALSE ,sct = FALSE )
+    p1 <- DimPlot( sce_subs, reduction = "umap", order = F,
+                   group.by  ="DF.classifications_0.25_0.26_800")
+    p2 <- FeaturePlot( sce_subs, reduction = "umap", order = F,features = "nCount_RNA" , 
+                       max.cutoff = 15000)
+    cowplot::plot_grid(p1,p2, ncol = 2)
+  }
+  
+  ### find doublets with scDblFinder https://bioconductor.org/books/release/OSCA/doublet-detection.html 
+  {
+    library(scDblFinder)
+    library(SingleCellExperiment)
+    # Doublet detection with clusters
+    # sce <- readRDS( file = "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_premRNA.Seurat.Norm.rda")
+    # sce_subs <- subset(sce, downsample=500)
+    sce_scExp <- as.SingleCellExperiment( sce_subs )
+    dbl.out <- findDoubletClusters(sce_scExp, 
+                clusters=sce_scExp$seurat_clusters , 
+                get.all.pairs = T )
+    dbl.out
+    
+    #  Doublet detection by simulation
+    set.seed(42)
+    
+    # Setting up the parameters for consistency with denoisePCA();
+    # this can be changed depending on your feature selection scheme.
+    dbl.dens <- computeDoubletDensity(sce_scExp, d=ncol(reducedDim(sce_scExp)))
+    summary(dbl.dens)
+    
+    sce_scExp$DoubletScore <- dbl.dens
+    sce_scExp$DoubletScore_limit <- dbl.dens
+    sce_scExp$DoubletScore_limit[sce_scExp$DoubletScore_limit > 5] <- 5
+    
+    scater::plotColData(sce_scExp, x="seurat_clusters", y="DoubletScore_limit", colour_by="seurat_clusters",
+                        point_size =0.3)
+    
+    scater::plotUMAP(sce_scExp, colour_by="DoubletScore_limit", point_size =0.3  )
+    scater::plotUMAP(sce_scExp, text_by="seurat_clusters" , colour_by="seurat_clusters", point_size =1   )
+    
+    # filter out doublets
+    sce$DoubletScore <- dbl.dens
+    saveRDS( sce , file="/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_premRNA.Seurat.Norm.rda")
+    
+    sce_noDubl <- subset(sce, idents = c(0,1,2,3,4,5,7,8,10,12,13,14,15),
+                         subset= DoubletScore <=0.5)
+    scater::plotUMAP( as.SingleCellExperiment(sce_noDubl), text_by="seurat_clusters" , colour_by="seurat_clusters", point_size =0.5   )
+    
+    saveRDS( sce_noDubl , file="/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_noDublets.12.04.21.rda")
+    
+    sce_noDub.Podo <- subset(sce_noDubl, idents=c(2,5))
+    saveRDS( sce_noDub.Podo , file="/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2_Podo.NuDubs.rda")
+    
+  }
+}
+
+### analyse podocytes 
+{
+  sce_Podo <- readRDS( "/media/tim_nevelsk/WD_tim/PROJECTS/PODOCYTES/RNAseq/snRNAseq_Nphs2/Seurat/snRNAseq_Nphs2mut.allSamples_premRNA.Seurat.Podo.rda" )
+  set.seed(42)
+  sce_subsPodo <- subset( sce_Podo , downsample=2000)
+  # Idents(sce_subsPodo) <- sce_subsPodo$orig.ident
+  # sce_subsPodo <- subset( sce_subsPodo , downsample=500)
+  # Idents(sce_subsPodo) <- sce_subsPodo$seurat_clusters
+  
+  ### PCA with podocytes
+  {
+    XX <- as.data.frame( t( as.matrix( sce_subsPodo@assays$RNA@counts) ) )
+    XX$groups <- as.factor( sce_subsPodo$orig.ident)
+    XX <-   aggregate( .~ groups , data= XX, sum )
+    datPlot <- t(XX[,-1])
+    colnames(datPlot) <- XX[,1]
+    # normalise by library size 
+    datPlot <- t(t(datPlot) / colSums(datPlot))*1000000
+    
+    # # plot contribution of genes to PCs 
+    # factoextra::fviz_cos2( prcomp(t(log(datPlot+1)),scale=F), 
+    #                        choice = "var", axes = 1:2, top=20)
+    # 
+    
+    PCA_heatm_plot( count_table = datPlot , 
+                    sampleNames= levels( as.factor(paste(sce_subsPodo$orig.ident, sce_subsPodo$gtype, sce_subsPodo$age, sep = "_")))  , 
+                    groupsExp = c( "wt", "mut", "wt", "wt", "mut", "mut", "mut",
+                                   "wt","mut","wt","wt", "mut","mut","mut") , 
+                    logtrans= T , title="PCA on pseudobulk Nphs2 snRNAseq Podocytes",
+                    topNprct=0.1 )
+  }
+
+  ### visualise podocytes
+  {
     ### find variable features
     sce_Podo <- FindVariableFeatures( sce_Podo , selection.method = "vst", nfeatures = 2000)
     
@@ -205,68 +283,63 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
     ### run PCA
     sce_Podo <- RunPCA( sce_Podo , features = VariableFeatures( object = sce_Podo ) )
     ElbowPlot( sce_Podo , ndims = 50 ) # choosing number of PCs to include 
-
+    
     # cluster
-    sce_Podo <- FindNeighbors( sce_Podo, dims = 1:10)
-    sce_Podo <- FindClusters( sce_Podo, resolution = 0.1)
+    sce_Podo <- FindNeighbors( sce_Podo, dims = 1:10 )
+    sce_Podo <- FindClusters( sce_Podo, resolution = 0.05 )
     
     # run UMAP
     sce_Podo <- RunUMAP( sce_Podo , dims = 1:10 )
     
     ### make plots
-    sce_subsPodo <- subset( sce_Podo , downsample=1000)
+    sce_subsPodo <- subset( sce_Podo , downsample=2000)
     sce_Podo_SCE <- as.SingleCellExperiment(sce_subsPodo)
     p1 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="seurat_clusters", point_size = 2   )
     p2 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="age", point_size = 2   )
     p3 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="gtype", point_size = 2   )
     p4 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="groups", point_size = 1   )
-    p5 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="Ephb1", point_size = 2  )
-    p6 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="Mafb", point_size = 2  )
+    p5 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="PDS.50.Podo", point_size = 2  )
+    p6 <- scater::plotUMAP(sce_Podo_SCE, text_by="seurat_clusters" , colour_by="Epha6", point_size = 2  )
     
     cowplot::plot_grid(p1, p2, p3,p4,p5,p6, ncol = 3)
   }
   
   ### do DE for podocytes
   {
-    Idents(sce_Podo) <- sce_Podo$groups
+
+    # check clusters that look like doublets
+    # 
     DE.podo <- list( 
       {
-        X <- FindMarkers(sce_Podo , ident.2 =  "Wt1.hd_4", ident.1 = "wtype_4" )
-        X$test <- "control.4w_VS_Wt1hd.4w" 
+        X <- FindMarkers(sce_subs , ident.2 =  5, ident.1 = 2 )
+        X$test <- "clust5_VS_clust2" 
         X$gNames <- rownames(X)
         X
       } ,
       {
-        X2 <- FindMarkers(sce_Podo ,ident.2 = "Wt1.hd_12",ident.1 ="wtype_13")
-        X2$test <- "control.13w_VS_Wt1hd.12w" 
+        X2 <- FindMarkers(sce_subs ,ident.2 = 9,ident.1 = 2 )
+        X2$test <- "clust9_VS_clust2" 
         X2$gNames <- rownames(X2)
         X2
       }, 
       {
-        X3 <-FindMarkers(sce_Podo ,ident.2 =  "Wt1.hd_25",ident.1 = "wtype_13")
-        X3$test <- "control.13w_VS_Wt1hd.25w" 
+        X3 <-FindMarkers(sce_subs ,ident.2 = 12 ,ident.1 = 2) 
+        X3$test <- "clust12_VS_clust2" 
         X3$gNames <- rownames(X3)
         X3
       }
     ) 
-    names(DE.podo) <- c("control.4w_VS_Wt1hd.4w",  
-                        "control.13w_VS_Wt1hd.12w",
-                        "control.13w_VS_Wt1hd.25w")
+    names(DE.podo) <- c("clust5_VS_clust2",  
+                        "clust9_VS_clust2",
+                        "clust12_VS_clust2")
     # save the table
     DE.podo_tab <- Reduce( rbind, DE.podo)
     DE.podo_tab$status <- ifelse( DE.podo_tab$gNames %in% Reduce( intersect, lapply(DE.podo, function(X) X$gNames)), 
-                                  "DE_inAll", ifelse( DE.podo_tab$gNames %in% intersect(DE.podo[[1]]$gNames, DE.podo[[2]]$gNames) ,
-                                                      "DE_4w13w", ifelse( DE.podo_tab$gNames %in% intersect(DE.podo[[1]]$gNames, DE.podo[[3]]$gNames) ,
-                                                                          "DE_4w25w", ifelse( DE.podo_tab$gNames %in% intersect(DE.podo[[2]]$gNames, DE.podo[[3]]$gNames) ,
-                                                                                              "DE_13w25w", ifelse( DE.podo_tab$gNames %in% DE.podo[[1]]$gNames ,
-                                                                                                                   "DE_4w", ifelse( DE.podo_tab$gNames %in% DE.podo[[2]]$gNames ,
-                                                                                                                                    "DE_12w","DE_25w" )
-                                                                                              )))
-                                                      
-                                  ))
+                                  "DE_inAll", ifelse( DE.podo_tab$gNames %in% intersect(DE.podo[[2]]$gNames, DE.podo[[3]]$gNames) ,
+                                                      "DE_double",  "") )
     DE.podo_tab$sig <- ifelse( DE.podo_tab$p_val_adj < 0.1, "YES","NO")
     write.table(DE.podo_tab , sep = "\t", quote = F, row.names = F, 
-                file="/home/tim_nevelsk/PROJECTS/PODOCYTE/RNAseq/snRNAseq_Wt1/FinalKFO/Seurat/snRNAseq_Wt1.allSamples_PodoSubs_DE.v2.tsv")
+                file="/home/tim_nevelsk/PROJECTS/PODOCYTE/RNAseq/snRNAseq_Nphs2/Seurat/FinalKFO/snRNAseq_Nphs2_DE.double.tsv")
     
     ## venn diagram
     gplots::venn( lapply(DE.podo, rownames) )
@@ -274,18 +347,16 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
     
   }
   
-  ### trajectory for podocytes
+  ### trajectory for sick  podocytes
   {
     ### plot cluster1
-    sce_PodoClust2 <- subset( sce_subsPodo, idents=c(  2 , 5) )
-    sce_PodoClust5 <- subset( sce_subsPodo, idents=c( 5), subset= gtype=="Nphs2mut" )
+    # sce_PodoClust2 <- subset( sce_subsPodo, idents=c(  2 , 5) )
+    sce_PodoClust5 <- subset( sce_Podo, idents=c( 5), subset= gtype=="Nphs2mut" )
     
-    sce_PodoClust9 <- subset( sce_Podo, idents=c(  9 ) )
-    sce_PodoClust12 <- subset( sce_Podo, idents=c(  12 ) )
-    
-    sce_Podo_SCE <- as.SingleCellExperiment( sce_PodoClust5 )
-    
-    scater::plotUMAP( sce_Podo_SCE , text_by="seurat_clusters" , colour_by="groups", point_size = 1   )
+     sce_Podo_SCE <- as.SingleCellExperiment( sce_PodoClust5 )
+     sce_Podo_SCE <- scater::arrange( data = sce_Podo_SCE , sample( colnames(sce_Podo_SCE)))
+     
+    scater::plotUMAP( sce_Podo_SCE , text_by="seurat_clusters" , colour_by="groups", point_size = 2   )
     
     #### https://bioconductor.org/books/release/OSCA/trajectory-analysis.html
     library(scater)
@@ -294,17 +365,24 @@ tx2gene <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),  mart = 
                                           use.dimred = "UMAP" , with.mnn=F )
     
     mnn.pseudo <- rowMeans( pseudo.all$ordering , na.rm=TRUE )
-    pp1 <-  scater::plotUMAP(sce_Podo_SCE, colour_by="groups", point_size = 0.1   )
+    pp1 <-  scater::plotUMAP(sce_Podo_SCE, colour_by="groups", point_size = 1   ) + 
+      xlim(NA,-8) + ylim(-2,3)
     
     pp2 <- scater::plotUMAP(sce_Podo_SCE, colour_by=I(mnn.pseudo), text_by="groups", 
-                            text_colour="red", point_size = 0.1 ) +
+                            text_colour="red", point_size = 1 ) + xlim(NA,-8)+ ylim(-2,3)+
+      geom_line(data=pseudo.all$connected$UMAP, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge))
+    pp3 <- scater::plotUMAP(sce_Podo_SCE, colour_by="PDS.50.Podo", text_by="groups", 
+                            text_colour="red", point_size = 1 ) + xlim(NA,-8)+ ylim(-2,3)+
+      geom_line(data=pseudo.all$connected$UMAP, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge))
+    pp4 <- scater::plotUMAP(sce_Podo_SCE, colour_by="Epha6", text_by="groups", 
+                            text_colour="red", point_size = 1 ) + xlim(NA,-8)+ ylim(-2,3)+
       geom_line(data=pseudo.all$connected$UMAP, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge))
     # pdf( height= )
-    cowplot::plot_grid(pp1 , pp2)
+    cowplot::plot_grid(pp1 , pp2 , pp3,pp4)
     
     # # Changes along a trajectory
-    # pseudo <- TSCAN::testPseudotime(sce_noDub.Podo_clust1SCE , pseudotime=mnn.pseudo )
-    # pseudo <- pseudo[order(pseudo$p.value),]
+    pseudo <- TSCAN::testPseudotime(sce_Podo_SCE , pseudotime=mnn.pseudo )
+    pseudo <- pseudo[order(pseudo$p.value),]
     
     
     
