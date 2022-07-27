@@ -2,7 +2,7 @@
 
 ### define function for making 1) sample distance heatmap and 2) PCA 
 PCA_heatm_plot=function(count_table, sampleNames=NA,
-                        groupsExp ,
+                        groupsExp , PCs = c(1,2),
                         topNprct=0.1 ,
                         logtrans=F, title="PCA")
 {
@@ -16,6 +16,7 @@ PCA_heatm_plot=function(count_table, sampleNames=NA,
   library("RColorBrewer")
   library("pheatmap")  
   require(ggplot2)
+  require(matrixStats)
   
   # define sample names as column names if sample names are not provided
   if ( length(sampleNames) == ncol(count_table)) colnames(count_table) <- sampleNames else sampleNames <- colnames(count_table)
@@ -45,11 +46,11 @@ PCA_heatm_plot=function(count_table, sampleNames=NA,
   print( summary(pr_comp_rnorm))
   #biplot(pr_comp_rnorm)
   XX = as.data.frame(pr_comp_rnorm$x)
-  g <- qplot( x=PC1, y=PC2, data=XX,  colour=factor(groupsExp), main=title) + 
-    geom_point(size=4  ) 
+  g <- qplot( x=XX[,PCs[1]], y=XX[,PCs[2]], 
+              data=XX,  colour=factor( groupsExp ), main=title) + geom_point(size=4 ) +
+    xlab(paste("PC", PCs[1], sep=""))+ylab(paste("PC", PCs[2], sep=""))
   # labels and dots sizes
-  g+theme_bw() + theme(axis.text=element_text(size=20),
-                       axis.title=element_text(size=24,face="bold"), legend.text = element_text(size = 24),legend.title = element_text(size=24))+
+  g+theme_bw() + theme(text=element_text(size=20))+
     scale_size(range = c(5, 6))+theme(legend.key.size = unit(2, "cm"))+ labs(colour = "condition")+
     geom_text(aes(label=rownames(XX)),hjust=0.4, vjust=-0.8,size=5)
 }
