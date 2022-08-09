@@ -11,50 +11,52 @@ library("topGO", lib.loc="/data/library/L-3.3.1")
     
     ### create named list that contain all gene members for each GO term
     mart <- biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL",dataset = "mmusculus_gene_ensembl",host = 'ensembl.org')
-    All_GO=getBM(attributes=c("ensembl_transcript_id","ensembl_gene_id","go_id"), mart=mart)
+    All_GO=getBM(attributes=c("ensembl_gene_id","go_id"), mart=mart)
     GO_list=unstack(All_GO[,c(2,3)]) 
 
     ### FUNCTION for topGO analysis 
-    GoBytopGO_weight01 = function( GO_list, geneset, universe, min.genes=5, topGOalgorythm="weight01Count", testtype=GOFisherTest) 
+    GoBytopGO_weight01 = function( GO_list, geneset, universe, min.genes=5 , 
+                                   topGOalgorythm="weight01" , 
+                                   testtype="fisher" ) 
       {
   require("topGO")
   
+  # define universe 
   ### create a gene list
   # first make a factor that is 1 if the probeset is "interesting" and 0 otherwise
-  geneList <- factor(as.integer (All_ID %in% geneset))
+  geneList <- factor(as.integer (universe %in% geneset))
   # name the factor with the probeset names
-  names (geneList) <- All_ID
+  names(geneList) <- universe
   
   # create topGOdata object for each category of GO
   topGO_BP=new("topGOdata",ontology='BP',description='topGOdata_BP', allGenes=geneList, annot = annFUN.GO2genes, GO2genes=GO_list, nodeSize = min.genes)
   topGO_MF=new("topGOdata",ontology='MF',description='topGOdata_MF', allGenes=geneList, annot = annFUN.GO2genes, GO2genes=GO_list, nodeSize = min.genes)
   topGO_CC=new("topGOdata",ontology='CC',description='topGOdata_CC', allGenes=geneList, annot = annFUN.GO2genes, GO2genes=GO_list, nodeSize = min.genes)
-  
+
   #### test statistics definition ####
   #### OBS! when only a list of interesting genes is provided, the user can use only  
   #### tests statistics that are based on gene counts, like Fisher's exact test.
-  test_stat <- new(topGOalgorythm, testStatistic = testtype, name = paste(topGOalgorythm,"_",testtype@generic[1]))
+  # test_stat <- new( topGOalgorythm, testStatistic = testtype, name = paste(topGOalgorythm,"_",testtype@generic[1]))
   
   ### test overrepresentation
-  resultBP <- getSigGroups(topGO_BP, test_stat)
-  resultMF <- getSigGroups(topGO_MF, test_stat)
-  resultCC <- getSigGroups(topGO_CC, test_stat)
+  resultBP <- runTest( topGO_BP, algorithm = topGOalgorythm , statistic = testtype )
+  resultMF <- runTest( topGO_MF, algorithm = topGOalgorythm, statistic = testtype )
+  resultCC <- runTest( topGO_CC, algorithm = topGOalgorythm, statistic = testtype )
   
   #### create summary table from results with all GO terms ###
   # tables contain all GO terms used by each GO object, specified by length(usedGO(object = topGO_BP))
-  gotable_BP <- GenTable(topGO_BP, weight01 = resultBF, ranksOf = "classic", topNodes = length(usedGO(object = topGO_BP)),numChar=100)
-  gotable_MF <- GenTable(topGO_MF, weight01 = resultMF, ranksOf = "classic", topNodes = length(usedGO(object = topGO_MF)),numChar=100)
-  gotable_CC <- GenTable(topGO_CC, weight01 = resultCC, ranksOf = "classic", topNodes = length(usedGO(object = topGO_CC)),numChar=100)
+  gotable_BP <- GenTable( topGO_BP, weight01 = resultBP, topNodes = length(usedGO(object = topGO_BP)), numChar=100 )
+  gotable_MF <- GenTable( topGO_MF, weight01 = resultMF, topNodes = length(usedGO(object = topGO_MF)), numChar=100 )
+  gotable_CC <- GenTable( topGO_CC, weight01 = resultCC, topNodes = length(usedGO(object = topGO_CC)), numChar=100 )
   
   # remove topGO with p-val=1 (don't contain any gene of interest) and add type of the GO terms 
-  gotable_BP=cbind(type="BP",subset(gotable_BP,gotable_BP$weight01<1))
-  gotable_MF=cbind(type="MF",subset(gotable_MF,gotable_MF$weight01<1))
-  gotable_CC=cbind(type="CC",subset(gotable_CC,gotable_CC$weight01<1))
+  gotable_BP=cbind(type="BP",gotable_BP)
+  gotable_MF=cbind(type="MF",gotable_MF)
+  gotable_CC=cbind(type="CC",gotable_CC)
   
   # combine results for different GO categories in one table
   gotable=rbind(gotable_BP,gotable_MF,gotable_CC)
-  gotable_pval0.01=subset(gotable,gotable$weight01<0.01)
-  return(gotable)
+  return( gotable )
 }
 
 # apply function
@@ -75,9 +77,8 @@ showSigOfNodes(so4ko12_GO, score(resultBF_so4ko12), firstSigNodes = 5, useInfo =
   gomatrix=sf.createGoMatrix()
   
   mart <- biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl")
-  tx2gene <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id","external_gene_name","transcript_biotype","gene_biotype","entrezgene_id"), mart = mart)
-  # tx2gene <- dplyr::rename(tx2gene, target_id = ensembl_transcript_id, ens_gene = ensembl_gene_id)
-  
+  tx2gene <- biomaRt::getBM(attributes = c("ensembl_gene_id","external_gene_name","entrezgene_id"), mart = mart)
+
   # define background gene set
   universe=colnames(gomatrix)
   
@@ -91,9 +92,9 @@ showSigOfNodes(so4ko12_GO, score(resultBF_so4ko12), firstSigNodes = 5, useInfo =
   # a geneset of interest and a background set of genes (universe)
   # carry out clustering with members diverging by at most cut_max genes, and do enrichment testing.
   # Note, multiplicity adjustment is performed for the representative terms only.
-  dbWT1_RobertGO=sf.clusterGoByGeneset(gomatrix,geneset,universe)
-  dbWT1_RobertGO_qval0.1=subset(dbWT1_RobertGO$results, Enrichment>0 & Is.primary==TRUE & Primary.Fisher.adj<0.1)
-  dbWT1_RobertGO_qval0.1=dbWT1_RobertGO_qval0.1[,4:13]
+  RobertGO=sf.clusterGoByGeneset(gomatrix,geneset,universe)
+  RobertGO_qval0.1=subset(RobertGO$results, Enrichment>0 & Is.primary==TRUE & Primary.Fisher.adj<0.1)
+  RobertGO_qval0.1= RobertGO_qval0.1[,4:13]
   
   #par(mar=par("mar") + c(3,18,3,3), xpd=F)
   margin_x=c(1,1,1,1)
@@ -736,21 +737,6 @@ paste(y, collapse = ',')}))
 ######### 2D plot for SPIA results
 spia_results <- list.files(pattern = "w_SPIA_","/data/user/tpadvits/PROJECTS/MARTIN_PJ/Publication/WT1_paper/RNAseq/SPIA/",full.names = T)
 
-# string wrapper
-wrap_text <- function(string, n=40) 
-{ require(stringr)
-  if(nchar(string) > n){
-    spaces <- str_locate_all(string, " ")[[1]][,1]
-    chars  <- nchar(string)
-    for(i in 1:floor(chars/n)) {
-      s <- spaces[which.min(abs(spaces - n*i))]
-      substring(string, s, s) <- "\n "
-    }
-    return(string)
-  } else string <- string
-  
-}
-
 # ECM-receptor interaction
 # Cell Cycle 
 # Inflammatory mediator regulation of TRP channels
@@ -788,7 +774,7 @@ spia_results_LFC <- vector("list",length = length(spia_results) ) # initialize a
 
 dataLFC <- kegg_path_LFC
 
-GOplot_2Dlfc <- function(dataLFC,type="KEGG"){
+GOplot_2Dlfc <- function( dataLFC ){
   require(ggrepel)
   require(ggplot2)
   
