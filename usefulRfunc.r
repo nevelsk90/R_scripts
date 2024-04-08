@@ -149,6 +149,8 @@ kallistoExInt_sum <- function( dir_exo , dir_intro , samples_exo , samples_intro
 ## summarise to glvl seperately
 trlvlTOglvl_func <- function( tgene_closGene , gName=T , thrshld=0.1)
   {
+  
+  
   # summarize to gene lvl only significant
   
   ClosGene_glvl <- tgene_closGene[which(rownames(tgene_closGene)%in%tx2gene$ensembl_transcript_id & tgene_closGene[,1]<thrshld),]
@@ -168,26 +170,39 @@ trlvlTOglvl_func <- function( tgene_closGene , gName=T , thrshld=0.1)
 }
 
 ### convert Human to mouse genes
-convertHumanGeneList <- function(x ,  uniqueG =T)
-  {
+fun_homoTO.FROMmouse <- function(gns, TO=T ){
+  # if TO parameter is TRUE then Homo -> Mouse, if FALSE then Mouse -> Homo
   
-  human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
-  mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+  options(connectionObserver = NULL)
+  require( "org.Hs.eg.db" )
+  require( "org.Mm.eg.db")
+  require( "Orthology.eg.db")
+  require("AnnotationDbi")
+ 
+  if(isTRUE(TO)){
+    egs <- mapIds(org.Hs.eg.db, gns, "ENTREZID","SYMBOL")
+    mapped <- AnnotationDbi::select(Orthology.eg.db, egs, "Mus.musculus","Homo.sapiens")
+    mapped$MUS <- mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "SYMBOL", "ENTREZID")
+    mapped$MUS.ens <- mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "ENSEMBL", "ENTREZID")
+  } else {
+    egs <- mapIds(org.Mm.eg.db, gns, "ENTREZID","SYMBOL")
+    mapped <- select( Orthology.eg.db, egs, "Homo.sapiens", "Mus.musculus")
+    mapped$HOMO <- mapIds(org.Hs.eg.db, as.character(mapped$Homo.sapiens), "SYMBOL", "ENTREZID")
+    mapped$HOMO[ is.na(mapped$Homo.sapiens)] <-  toupper(rownames(mapped))[ is.na( mapped$Homo.sapiens ) ] 
+    mapped$HOMO[rownames(mapped)=="Cd59a"]<- "CD59"
+    mapped$HOMO.ens <- mapIds(org.Hs.eg.db, as.character(mapped$HOMO), "ENSEMBL", "SYMBOL")
+    
+  }
   
-  require("biomaRt")
-  
-  genesV2 = getLDS(attributes = c("external_gene_name"), filters = "external_gene_name", values = x , mart = human, attributesL = c("external_gene_name"), martL = mouse, uniqueRows= uniqueG)
-  
-  # Print the first 6 genes found to the screen
-  print(head(genesV2))
-  return(genesV2)
+  return(mapped)
 }
+
 
 ### function to sum P-values using Fisher method
 fishersMethod = function(x) pchisq(-2 * sum(log(x)),df=2*length(x),lower=FALSE)
 
 
-### moving average func
+### moving average  func
 slideFunct <- function(data, window, step, Fmedian=F)
   {
   total <- length(data)
@@ -200,27 +215,8 @@ slideFunct <- function(data, window, step, Fmedian=F)
   }
   return(result)
 }
-### compute the disease score using marker genes and scRNAseq
-# disease_score <- function( scRNAseq = scPodo_libNorm , wt_cells=c(1:587) ,marker_gene_list , marker_gene_LFC , mainPlot="disease score based on scRNAseq 385DE genes")
-#   {
-#   scBerlin_PodoDE <- scRNAseq[ match( marker_gene_list , rownames(scRNAseq) ) , ]
-#   
-#   
-#   PodoGene_WTmean <- rowMeans( scBerlin_PodoDE[,wt_cells] )
-#   
-#   PodoGene_disStat <- sapply( 1:nrow(scBerlin_PodoDE) , function(x) 
-#     if ( marker_gene_LFC[x] > 0)  scBerlin_PodoDE[x,] - PodoGene_WTmean[x] else (scBerlin_PodoDE[x,] - PodoGene_WTmean[x])*( -1 ) ) 
-#   
-#   PodoGene_disVect <- apply( PodoGene_disStat , 1, function(x) mean(as.numeric(x) , na.rm = T) )
-#   
-#   # # plot disease status for every cell
-#   # plot(PodoGene_disVect, xlab ="cells" , ylab="disease score", main=mainPlot , col = c(rep("blue", 587) , rep("red" , 273)))
-#   # legend("top", legend=c("wild-type", "WT1 het.del."), fill=c("blue", "red"),  title = "genotype")
-#   
-#   return(PodoGene_disVect)
-#   
-# }
 
+### wrap text strins
 wrap_text <- function(string, n=40)
   { require(stringr)
   if(nchar(string) > n){
@@ -233,4 +229,264 @@ wrap_text <- function(string, n=40)
     return(string)
   } else string <- string
   
+}
+
+
+#### https://stackoverflow.com/questions/15006211/how-do-i-generate-a-mapping-from-numbers-to-colors-in-r
+### numeric to color
+map2color<-function(x,pal,limits=NULL){
+  if(is.null(limits)) limits=range(x)
+  pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
+}
+
+### Range standardization (0 to 1) in R  https://stackoverflow.com/questions/5665599/range-standardization-0-to-1-in-r 
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+
+
+#### functional annotation by clusterprofile
+
+cProfiler.GKR <-  function( ggenes.eID, 
+                            gene.bckgrnd_eID ){
+  ## ggenes.eID and gene.bckgrnd_eID are entrez IDs 
+  
+  require(clusterProfiler)
+  require(org.Mm.eg.db)
+  require(ReactomePA)
+  
+  GO.enrich <- clusterProfiler::enrichGO( gene=ggenes.eID , 
+                                          OrgDb = "org.Mm.eg.db",
+                                          ont="ALL",
+                                          universe= gene.bckgrnd_eID,
+                                          minGSSize =3 ,
+                                          readable = T
+  )
+  KEGG.enrich <- clusterProfiler::enrichKEGG( gene= ggenes.eID , 
+                                              organism = "mmu",
+                                              universe= gene.bckgrnd_eID, 
+                                              minGSSize =3 ,
+                                              use_internal_data = T
+  )
+  KEGG.enrich@result <- cbind( ONTOLOGY= "KEGG" , KEGG.enrich@result  ) 
+  
+  REACT.enrich<- ReactomePA::enrichPathway(gene=ggenes.eID , 
+                                           organism = "mouse",
+                                           universe = gene.bckgrnd_eID,
+                                           minGSSize =3 ,
+                                           readable=T )
+  REACT.enrich@result <- cbind( ONTOLOGY= "REACT" , REACT.enrich@result  ) 
+  
+  ll <- list(GO.enrich, KEGG.enrich ,REACT.enrich)          
+  names(ll)<- c("GO.enrich", "KEGG.enrich" ,"REACT.enrich")  
+  return(ll)
+}
+
+
+### calculate AUCell score for a group of gene sets
+## the function can handle both named numeric and charachter vectors
+
+calculateAUCcell <- function( geneSets , AUCthrsh=0.05, ddata ,
+                              Seurat.type =F )
+  {
+  require(GSEABase)
+  ## the function can handle both named numeric and charachter vectors
+  
+  # split genesets by direction of change if numeric vectors are provided
+  if( is.numeric(geneSets[[1]])) {
+    geneSets.Split <- Reduce( c , lapply(seq( geneSets), function(jj){
+      UP <- names(geneSets[[jj]])[geneSets[[jj]]>0]
+      DOWN <- names(geneSets[[jj]])[geneSets[[jj]]<0]
+      return(list(UP,DOWN))
+    }))
+    names( geneSets.Split ) <- c(rbind(  paste( names(geneSets) ,"UP",sep = "_"),
+                                         paste( names(geneSets) ,"DOWN",sep = "_") ))
+
+  } else geneSets.Split <- geneSets
+  
+  # prepare gene sets
+  genesets_list <- lapply( seq(geneSets.Split) , function( ii ) {
+    GeneSet( geneSets.Split[[ii]], 
+             setName= names(geneSets.Split)[ii] ) } )
+  genesets_list <-  GSEABase::GeneSetCollection( genesets_list )
+  
+  # load expression data 
+  if( isTRUE(Seurat.type) ) {
+    exprMatrices <- ddata@assays$RNA@counts
+  }  else   exprMatrices <- as.matrix(ddata)
+ 
+
+  # 1. Build gene-expression rankings for each cell  
+  cells_rankings <-  AUCell::AUCell_buildRankings( exprMatrices, 
+                                                   nCores=1, plotStats=F)
+  
+  # 2. Calculate enrichment for the gene signatures (AUC)
+  # store NAs if less than 20% of geneSet genes are expressed in snRNAseq
+  cells_AUC <- AUCell::AUCell_calcAUC( genesets_list , cells_rankings ,
+                                       aucMaxRank= ceiling(AUCthrsh * nrow(cells_rankings)), 
+                                       verbose = T )
+  cells_AUC <- AUCell::getAUC( cells_AUC)
+  
+  # subtract down scores from the UP scores
+  if( is.numeric(geneSets[[1]])) { 
+    cells_AUCres <- t(cells_AUC)
+    cells_AUCres <- cells_AUCres[,seq(1,ncol(cells_AUCres),2)] - cells_AUCres[,seq(2,ncol(cells_AUCres),2)]
+    colnames(cells_AUCres) <- names(geneSets)
+    cells_AUCres <- t(cells_AUCres)
+    } else cells_AUCres <- cells_AUC
+  
+  return(cells_AUCres)
+}
+
+### https://stackoverflow.com/questions/37613345/r-convert-upper-triangular-part-of-a-matrix-to-symmetric-matrix
+ultosymmetric_diagonalone=function(m){
+  m = m + t(m) - 2*diag(diag(m)) + diag(1,nrow=dim(m)[1])
+  return (m)}
+
+makeSymm <- function(m) {
+  m[upper.tri(m)] <- t(m)[upper.tri(m)]
+  return(m)
+}
+
+## https://stackoverflow.com/questions/13112238/a-matrix-version-of-cor-test
+cor.test.p <- function(x){
+  FUN <- function(x, y) cor.test(x, y)[["p.value"]]
+  z <- outer(
+    colnames(x), 
+    colnames(x), 
+    Vectorize(function(i,j) FUN(x[,i], x[,j]))
+  )
+  dimnames(z) <- list(colnames(x), colnames(x))
+  z
+}
+
+
+###https://stats.stackexchange.com/questions/160671/estimate-lag-for-granger-causality-test
+select.lags<-function(x,y,max.lag=8) {
+  y<-as.numeric(y)
+  y.lag<-embed(y,max.lag+1)[,-1,drop=FALSE]
+  x.lag<-embed(x,max.lag+1)[,-1,drop=FALSE]
+  
+  t<-tail(seq_along(y),nrow(y.lag))
+  
+  ms=lapply(1:max.lag,function(i) lm(y[t]~y.lag[,1:i]+x.lag[,1:i]))
+  
+  pvals<-mapply(function(i) anova(ms[[i]],ms[[i-1]])[2,"Pr(>F)"],max.lag:2)
+  ind<-which(pvals<0.05)[1]
+  ftest<-ifelse(is.na(ind),1,max.lag-ind+1)
+  
+  aic<-as.numeric(lapply(ms,AIC))
+  bic<-as.numeric(lapply(ms,BIC))
+  structure(list(ic=cbind(aic=aic,bic=bic),pvals=pvals,
+                 selection=list(aic=which.min(aic),bic=which.min(bic),ftest=ftest)))
+}
+
+
+### Transformation of GRange object to density per bin
+# https://divingintogeneticsandgenomics.com/post/compute-averages-sums-on-granges-or-equal-length-bins/
+averagePerBin <- function(x, binsize, mcolnames=NULL)
+{
+  if (!is(x, "GenomicRanges"))
+    stop("'x' must be a GenomicRanges object")
+  if (any(is.na(seqlengths(x))))
+    stop("'seqlengths(x)' contains NAs")
+  bins <- IRangesList(lapply(seqlengths(x),
+                             function(seqlen)
+                               IRanges(breakInChunks(seqlen, binsize))))
+  ans <- as(bins, "GRanges")
+  seqinfo(ans) <- seqinfo(x)
+  if (is.null(mcolnames))
+    return(ans)
+  averageMCol <- function(colname)
+  {
+    cvg <- coverage(x, weight=colname)
+    views_list <- RleViewsList(
+      lapply(names(cvg),
+             function(seqname)
+               Views(cvg[[seqname]], bins[[seqname]])))
+    unlist(viewMeans(views_list), use.names=FALSE)
+  }
+  mcols(ans) <- DataFrame(lapply(mcols(x)[mcolnames], averageMCol))
+  ans
+}
+
+### How to prevent reduce when using setdiff on GRanges  https://www.biostars.org/p/489350/ 
+# Written by bosberg on Biostars, March 22, 2021. Free to use for scholarly purposes.
+GRanges_subtract <- function( gr1, gr2 )
+{
+  require(bedtoolsr)
+  require(GenomicRanges)
+  # Subtract GRange object gr2 from gr1, but unlike setdiff, preserve individual
+  # ranges in gr1
+  df_1 = data.frame( seqnames=seqnames(gr1), start=start(gr1)-1, end=end(gr1), strand=strand(gr1), mcols( gr1 ) )
+  df_2 = data.frame( seqnames=seqnames(gr2), start=start(gr2)-1, end=end(gr2), strand=strand(gr2), mcols( gr2 ) )
+  #                                                          ^ -1 --> convert to base-0 start for bedtools
+  result = bedtoolsr::bt.subtract(df_1, df_2)
+  
+  if ( length(result)==0 ){
+    # subtraction has left nothing remaining. Return empty GRanges obj.
+    return( GRanges() )
+  } else {
+    
+    colnames( result ) = colnames( df_1 )
+    result$start=result$start+1
+    #                        ^ reset to base-1 notation consistent with GRanges
+    
+    return ( GRanges( result ) )
+  }
+}
+
+
+#random drawings from a custom probability distribution derived from a dataset
+# https://stackoverflow.com/questions/51500331/r-random-drawings-from-a-custom-probability-distribution-derived-from-a-datase 
+mysampler <- function(x, n) {
+  y <- runif(n)
+  c(quantile(x, probs = y)) #maybe a different quantile type should be used?
+}
+
+## compute the size of directory in R
+## https://stackoverflow.com/questions/39753172/compute-the-size-of-directory-in-r
+dir_size <- function(path, recursive = TRUE) {
+  stopifnot(is.character(path))
+  files <- list.files(path, full.names = T, recursive = recursive)
+  vect_size <- sapply(files, function(x) file.size(x))
+  size_files <- sum(vect_size)
+  size_files
+}
+
+### Convert read counts to transcripts per million (TPM).
+# https://gist.github.com/slowkow/c6ab0348747f86e2748b 
+counts_to_tpm <- function(counts, featureLength, meanFragmentLength) {
+  
+  # Ensure valid arguments.
+  stopifnot(length(featureLength) == nrow(counts))
+  stopifnot(length(meanFragmentLength) == ncol(counts))
+  
+  # Compute effective lengths of features in each library.
+  effLen <- do.call(cbind, lapply(1:ncol(counts), function(i) {
+    featureLength - meanFragmentLength[i] + 1
+  }))
+  
+  # Exclude genes with length less than the mean fragment length.
+  idx <- apply(effLen, 1, function(x) min(x) > 1)
+  counts <- counts[idx,]
+  effLen <- effLen[idx,]
+  featureLength <- featureLength[idx]
+  
+  # Process one column at a time.
+  tpm <- do.call(cbind, lapply(1:ncol(counts), function(i) {
+    rate = log(counts[,i]) - log(effLen[,i])
+    denom = log(sum(exp(rate)))
+    exp(rate - denom + log(1e6))
+  }))
+  
+  # Copy the row and column names from the original matrix.
+  colnames(tpm) <- colnames(counts)
+  rownames(tpm) <- rownames(counts)
+  return(tpm)
+}
+
+###Jaccard similarity
+jaccard <- function(a, b) {
+  intersection = length(intersect(a, b))
+  union = length(a) + length(b) - intersection
+  return (intersection/union)
 }
