@@ -83,6 +83,9 @@ esmbID2gName <- getBM( attributes=c('ensembl_gene_id',
              setName= names(reactPath_gName)[jj] ) } )
   reactPath_genesets <-  GSEABase::GeneSetCollection( reactPath_genesets )
   
+  saveRDS( reactPath_genesets , file="reactPath_genesets.13.05.2024.rda")
+  
+  
 }
 
 # prepare KEGG
@@ -107,8 +110,9 @@ esmbID2gName <- getBM( attributes=c('ensembl_gene_id',
              setName= names(kegg_pathsList)[jj] ) } )
   keggPath_genesets <-  GSEABase::GeneSetCollection( keggPath_genesets )
 
+  saveRDS( keggPath_genesets , file="keggPath_genesets.13.05.2024.rda")
+  
 }
-
 
 
 ####======== Signaling Pathway Impact Analysi (SPIA) ======

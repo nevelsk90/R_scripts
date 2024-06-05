@@ -170,24 +170,29 @@ trlvlTOglvl_func <- function( tgene_closGene , gName=T , thrshld=0.1)
 }
 
 ### convert Human to mouse genes
-fun_homoTO.FROMmouse <- function(gns, TO=T ){
-  # if TO parameter is TRUE then Homo -> Mouse, if FALSE then Mouse -> Homo
+fun_homoTO.FROMmouse <- function(gns, TO=T )
+  {
+  # if TO parameter is TRUE then Homo -> Mouse, 
+  # if FALSE then Mouse -> Homo
   
-  options(connectionObserver = NULL)
+   options(connectionObserver = NULL)
   require( "org.Hs.eg.db" )
-  require( "org.Mm.eg.db")
-  require( "Orthology.eg.db")
-  require("AnnotationDbi")
+  require( "org.Mm.eg.db" )
+  require( "Orthology.eg.db" )
+  require( "AnnotationDbi" )
  
   if(isTRUE(TO)){
-    egs <- mapIds(org.Hs.eg.db, gns, "ENTREZID","SYMBOL")
+    egs <- AnnotationDbi::mapIds( org.Hs.eg.db, gns, "ENTREZID","SYMBOL")
     mapped <- AnnotationDbi::select(Orthology.eg.db, egs, "Mus.musculus","Homo.sapiens")
-    mapped$MUS <- mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "SYMBOL", "ENTREZID")
-    mapped$MUS.ens <- mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "ENSEMBL", "ENTREZID")
+    mapped$MUS <- AnnotationDbi::mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "SYMBOL", "ENTREZID")
+    mapped$MUS.ens <- AnnotationDbi::mapIds(org.Mm.eg.db, as.character(mapped$Mus.musculus), "ENSEMBL", "ENTREZID")
   } else {
-    egs <- mapIds(org.Mm.eg.db, gns, "ENTREZID","SYMBOL")
-    mapped <- select( Orthology.eg.db, egs, "Homo.sapiens", "Mus.musculus")
-    mapped$HOMO <- mapIds(org.Hs.eg.db, as.character(mapped$Homo.sapiens), "SYMBOL", "ENTREZID")
+    egs <- AnnotationDbi::mapIds(org.Mm.eg.db, gns, "ENTREZID","SYMBOL")
+    mapped <- AnnotationDbi::select( Orthology.eg.db, egs, 
+                                     "Homo.sapiens", "Mus.musculus")
+    mapped$HOMO <- AnnotationDbi::mapIds(org.Hs.eg.db, 
+                                         as.character(mapped$Homo.sapiens), 
+                                         "SYMBOL", "ENTREZID")
     mapped$HOMO[ is.na(mapped$Homo.sapiens)] <-  toupper(rownames(mapped))[ is.na( mapped$Homo.sapiens ) ] 
     mapped$HOMO[rownames(mapped)=="Cd59a"]<- "CD59"
     mapped$HOMO.ens <- mapIds(org.Hs.eg.db, as.character(mapped$HOMO), "ENSEMBL", "SYMBOL")
@@ -489,4 +494,112 @@ jaccard <- function(a, b) {
   intersection = length(intersect(a, b))
   union = length(a) + length(b) - intersection
   return (intersection/union)
+}
+
+
+### a function to test a gene set promoters for motif enrichment, 
+### using ame function from the meme toolset
+TF_motifEnrichTest <- function( gset =   c("Wt1","Nphs2","Lmx1b","Podxl","Thsd7a"),
+                                bckgrGenes = "all" ,
+                                scoreMethod = "fisher", 
+                                motifDir = "/media/tim_nevelsk/WD_tim/ANNOTATIONS/CISBP/CISBP2mouse_podoTF_08.01.24.meme",
+                                outDir = "/home/tim_nevelsk/PROJECTS/PODOCYTE/DiseaseScore/PDS_pseudotime/TFreg/AME_motifAnalysis/")
+  {
+  ### gset - a charachter vector, containing gene names
+  ### bckgrGenes - genes to use as the background
+  ### motifDir - a file with TF PWMs in meme format
+  ### outDir - the output directory
+  
+  require( org.Mm.eg.db)
+  require( memes)
+  require( GenomicFeatures)
+  require( GenomicRanges)
+  require( TxDb.Mmusculus.UCSC.mm10.knownGene )
+  
+  # load mouse genome
+  if( !exists( "Mmusculus" ) ) Mmusculus <- Rsamtools::FaFile( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/mouse_genome/mm10.fa" )
+  
+  # define a gene set
+  geneEID <- mapIds( org.Mm.eg.db, gset , 'ENTREZID', 'SYMBOL')
+  geneEID <- geneEID[ geneEID %in% keys(TxDb.Mmusculus.UCSC.mm10.knownGene)]
+  # define a background
+  if( length(bckgrGenes)== 1 ) {
+    bkgrEID <- keys(TxDb.Mmusculus.UCSC.mm10.knownGene)
+    } else {
+    bkgrEID <-  mapIds(org.Mm.eg.db, bckgrGenes , 'ENTREZID', 'SYMBOL')
+    bkgrEID <- bkgrEID[ bkgrEID %in% keys(TxDb.Mmusculus.UCSC.mm10.knownGene)] 
+  }
+  # get transcript ranges
+  transcripts <- transcriptsBy ( TxDb.Mmusculus.UCSC.mm10.knownGene, by = "gene")[geneEID]
+  transcriptBKGR <- transcriptsBy ( TxDb.Mmusculus.UCSC.mm10.knownGene, by = "gene")[bkgrEID]
+  # transcriptUNIV <- transcriptsBy ( TxDb.Mmusculus.UCSC.mm10.knownGene, by = "gene")
+  
+  # get promoter ranges 
+  prom <- promoters( transcripts , 
+                     use.names = T , upstream = 2000, downstream = 200)
+  promBKGR <- promoters( transcriptBKGR , 
+                         use.names = T , upstream = 2000, downstream = 200)
+  # promUNIV  <- promoters( transcriptUNIV , 
+  #                        use.names = T , upstream = 2000, downstream = 200)
+  
+  ## union of overlaping regions
+  prom <-  reduce( unlist(prom) )
+  promBKGR <- reduce( unlist(promBKGR) )
+  # promUNIV <-  GRangesList(lapply( promUNIV, reduce))
+  
+  ## extract sequence
+  prom_seq <- Biostrings::getSeq( Mmusculus , prom )
+  promBKGR_seq <- Biostrings::getSeq( Mmusculus , promBKGR )
+  # promUNIV_seq <- Biostrings::getSeq( Mmusculus , Reduce( c , promUNIV) )
+  
+  
+  if( is.na( bckgrGenes))  promBKGR_seq <- NA
+  
+  
+  ### Motif enrichment using AME
+  # use only TFs expressed in podo
+  gene.topCorPDS.xprmnt_Ame <- runAme( input = prom_seq , 
+                                       control = promBKGR_seq , # promoters of genes xprsd in podocytes in sn/scRNAseq, as controls
+                                       # control = promUNIV_seq , # all mouse promoters as controls
+                                       silent=F ,
+                                       outdir = outDir ,
+                                       database= motifDir ,
+                                       method = scoreMethod )
+  return(gene.topCorPDS.xprmnt_Ame)
+  
+}
+
+
+### function to do hypergeometric test of TF targets enrichment
+## the function return fdr adjusted p-values
+gset.TFqval  <- function( geneSet , GRN=ATACseq_tgenesM.podo) 
+  {
+  ## geneSet - a vector with gene names
+  ## GRNc - a TRN in a matrix shape: columns are TFs, rows are target genes, target genes
+  # should have same IDs as in geneSet variable
+  
+  p.adjust( apply( GRN, 2, function(TF){
+    TFtg <- rownames(GRN)[TF>2] ## only TFs with more than 2 targets are considered
+    print( length(TFtg))
+    overlap <- length( intersect( geneSet,  TFtg ) )
+    list1 <- length( geneSet )
+    list2 <- length( TFtg )
+    popSize <- nrow( GRN )
+    ph <- phyper(overlap-1, list2, popSize - list2, list1, lower.tail=FALSE )
+    
+    
+    
+    return(ph )
+  }), method="fdr" ) }
+
+
+### extract plot axes' ranges for a ggplot2 object
+### https://stackoverflow.com/questions/7705345/how-can-i-extract-plot-axes-ranges-for-a-ggplot2-object 
+get_plot_limits <- function(plot) {
+  gb = ggplot_build(plot)
+  xmin = gb$layout$panel_params[[1]]$x.range[1]
+  xmax = gb$layout$panel_params[[1]]$x.range[2]
+  ymin = gb$layout$panel_params[[1]]$y.range[1]
+  ymax = gb$layout$panel_params[[1]]$y.range[2]
+  c(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)
 }
