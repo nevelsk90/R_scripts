@@ -1,6 +1,6 @@
 #### FUNCTIONS ####
 
-### define function for making 1) sample distance heatmap and 2) PCA 
+####  function for making 1) sample distance heatmap and 2) PCA  ####
 PCA_heatm_plot=function(count_table, sampleNames=NA,
                         groupsExp , PCs = c(1,2),
                         topNprct=0.1 ,
@@ -507,13 +507,13 @@ TF_motifEnrichTest <- function( gset =   c("Wt1","Nphs2","Lmx1b","Podxl","Thsd7a
   {
   ### gset - a charachter vector, containing gene names
   ### bckgrGenes - genes to use as the background
-  ### motifDir - a file with TF PWMs in meme format
+  ### motifDir - a file with TF PWMs in meme format or a list of motifs
   ### outDir - the output directory
   
   require( org.Mm.eg.db)
   require( memes)
-  require( GenomicFeatures)
-  require( GenomicRanges)
+  require( GenomicFeatures )
+  require( GenomicRanges )
   require( TxDb.Mmusculus.UCSC.mm10.knownGene )
   
   # load mouse genome
@@ -528,7 +528,9 @@ TF_motifEnrichTest <- function( gset =   c("Wt1","Nphs2","Lmx1b","Podxl","Thsd7a
     } else {
     bkgrEID <-  mapIds(org.Mm.eg.db, bckgrGenes , 'ENTREZID', 'SYMBOL')
     bkgrEID <- bkgrEID[ bkgrEID %in% keys(TxDb.Mmusculus.UCSC.mm10.knownGene)] 
-  }
+    }
+  print( paste0("bckGrSize:",length(bkgrEID),
+                ", gsetSize:", length( intersect( geneEID,bkgrEID))))
   # get transcript ranges
   transcripts <- transcriptsBy ( TxDb.Mmusculus.UCSC.mm10.knownGene, by = "gene")[geneEID]
   transcriptBKGR <- transcriptsBy ( TxDb.Mmusculus.UCSC.mm10.knownGene, by = "gene")[bkgrEID]
@@ -570,29 +572,6 @@ TF_motifEnrichTest <- function( gset =   c("Wt1","Nphs2","Lmx1b","Podxl","Thsd7a
 }
 
 
-### function to do hypergeometric test of TF targets enrichment
-## the function return fdr adjusted p-values
-gset.TFqval  <- function( geneSet , GRN=ATACseq_tgenesM.podo) 
-  {
-  ## geneSet - a vector with gene names
-  ## GRNc - a TRN in a matrix shape: columns are TFs, rows are target genes, target genes
-  # should have same IDs as in geneSet variable
-  
-  p.adjust( apply( GRN, 2, function(TF){
-    TFtg <- rownames(GRN)[TF>2] ## only TFs with more than 2 targets are considered
-    print( length(TFtg))
-    overlap <- length( intersect( geneSet,  TFtg ) )
-    list1 <- length( geneSet )
-    list2 <- length( TFtg )
-    popSize <- nrow( GRN )
-    ph <- phyper(overlap-1, list2, popSize - list2, list1, lower.tail=FALSE )
-    
-    
-    
-    return(ph )
-  }), method="fdr" ) }
-
-
 ### extract plot axes' ranges for a ggplot2 object
 ### https://stackoverflow.com/questions/7705345/how-can-i-extract-plot-axes-ranges-for-a-ggplot2-object 
 get_plot_limits <- function(plot) {
@@ -602,4 +581,35 @@ get_plot_limits <- function(plot) {
   ymin = gb$layout$panel_params[[1]]$y.range[1]
   ymax = gb$layout$panel_params[[1]]$y.range[2]
   c(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)
+}
+
+
+### Function to summarize matrix columns based on a grouping vector
+summarize_columns <- function(matrix_data, grouping_vector) 
+  {
+  # Validate input
+  if (ncol(matrix_data) != length(grouping_vector)) {
+    stop("The length of the grouping vector must match the number of columns in the matrix.")
+  }
+  
+  # Create a list to store results
+  summary_list <- list()
+  
+  # Unique groups
+  groups <- unique(grouping_vector)
+  
+  # Loop through each group and summarize columns
+  for (group in groups) {
+    # Indices of columns in the current group
+    cols_in_group <- which(grouping_vector == group)
+    
+    # Sum the columns in the current group
+    group_sum <- rowSums(matrix_data[, cols_in_group, drop = FALSE])
+    
+    # Store the result in the list
+    summary_list[[group]] <- group_sum
+  }
+  summary_list <- Reduce( cbind , summary_list )
+  colnames(summary_list) <- groups
+  return(summary_list)
 }
