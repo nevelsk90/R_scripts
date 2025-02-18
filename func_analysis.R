@@ -2,8 +2,11 @@
 # ========== FUNCTIONAL ANNOTATION AND PATHWAY ANALYSIS ========= =
 #=================================================================#
 options(connectionObserver = NULL)
+
 .libPaths( c( "/home/tim_nevelsk/R/x86_64-pc-linux-gnu-library/4.0", 
               "/media/tim_nevelsk/WD_tim/SOFT/R" ) )
+
+source("/home/tim_nevelsk/PROJECTS/myCode/justGO_ROBERT.R")
 
 source("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/usefulRfunc.r")
 
@@ -29,6 +32,10 @@ esmbID2gName <- getBM( attributes=c('ensembl_gene_id',
 esmbID2entr <- getBM( attributes=c('ensembl_gene_id', 
                                   "entrezgene_id" ) ,  mart = mart_mouse )
 
+## load collection of pathways
+pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
+
+
 ####======== GO ANALYSIS ===========####
 ### prepare GO annotations
   {
@@ -45,12 +52,10 @@ esmbID2entr <- getBM( attributes=c('ensembl_gene_id',
   
 }
 
-################# GO annotation with Robert function ################ #
+### GO annotation with Robert function 
   {
   ### prepare gene set by annotating ensembleID with entrezID
-    options(connectionObserver = NULL)
 
-  source("/home/tim_nevelsk/PROJECTS/myCode/justGO_ROBERT.R")
   library("org.Mm.eg.db")
     library(GO.db)
     library(DBI)
@@ -64,90 +69,6 @@ esmbID2entr <- getBM( attributes=c('ensembl_gene_id',
 
 
 }
-
-####======== Prepare Pathways  ========####
-pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
-
-# reactPath_genesets <- readRDS( file="reactPath_genesets.13.05.2024.rda")
-# keggPath_genesets <- readRDS( file="keggPath_genesets.13.05.2024.rda")
-# keggPath_pathlist <- readRDS("/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/kegg_pathsList_gName.07.09.23.rda")
-# reactPath_pathlist <- readRDS("/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/reactome_pathsList_gName.07.09.23.rda")
-# PodoPathGSet_pathlist <- readRDS(file="/home/tim_nevelsk/PROJECTS/PODOCYTE/DiseaseScore/PodoPathGSet.05.01.24.7plus.rda")
-# 
-# library(msigdbr)
-# msigdbr.50h <- msigdbr(species = "Mus musculus", category = "H")
-# msigdbr.50h_list <- split(x = msigdbr.50h$gene_symbol, f = msigdbr.50h$gs_name)
-# pathDB <- c( msigdbr.50h_list, PodoPathGSet_pathlist, keggPath_pathlist , reactPath_pathlist)
-# names( pathDB ) <- c( names(msigdbr.50h_list),names(PodoPathGSet_pathlist),
-#                       paste(names( keggPath_pathlist),"KEGG",sep = "__") , 
-#                       paste(names( reactPath_pathlist),"REACT",sep = "__"))
-# 
-# saveRDS(pathDB, "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
-
-# # prepare Reactome
-#   {
-#   # read the file
-#   reactPath <- fgsea::gmtPathways( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/Reactome/ReactomePathways.gmt")
-#   
-#   
-#   humanGen <- unique (Reduce( c , reactPath) )
-#   mouseGen <- fun_homoTO.FROMmouse(humanGen, TO=T)
-#   mouseGen$HOMO <- rownames(mouseGen)
-#   
-#   reactPath_gName <- lapply( reactPath , function(x){
-#     X <- as.character( na.omit( unique(mouseGen$MUS[ match( x, mouseGen$HOMO)])))
-#   } )
-#   
-#   # remove untranslated names
-#   reactPath_gName <- lapply(reactPath_gName, function(X) X <- X[X!="NULL"])
-#   
-#   # delete paths with no 3 genes
-#   reactPath_gName <- reactPath_gName[ unlist( lapply( reactPath_gName, function(x) length(x)>0  ))]
-#   # remove NAs from gene names 
-#   reactPath_gName <- lapply(reactPath_gName, function(X) X[!is.na(X)])
-#   reactPath_gName <- lapply(reactPath_gName, unique)
-#   
-#   # create gene set collection
-#   reactPath_genesets <- lapply( seq(reactPath_gName) , function( jj ) {
-#     GeneSet( reactPath_gName[[jj]], 
-#              setName= names(reactPath_gName)[jj] ) } )
-#   reactPath_genesets <-  GSEABase::GeneSetCollection( reactPath_genesets )
-#   
-#   saveRDS( reactPath_genesets , file="reactPath_genesets.13.05.2024.rda")
-#   
-# }
-# 
-# # prepare KEGG
-#   {
-#   ## download directly from KEGG
-#   library(KEGGgraph)
-#   kegg_paths <- limma::getGeneKEGGLinks(species.KEGG = "mmu", convert = T)
-#   X <-  limma::getKEGGPathwayNames(species.KEGG = "mmu", remove.qualifier = T)
-#   kegg_paths$pNames <- X$Description[ match( sub( "path:","" , kegg_paths$PathwayID) , 
-#                                              X$PathwayID)]
-#   kegg_paths$gNames <- entr2gName$external_gene_name[ match(kegg_paths$GeneID , entr2gName$entrezgene_id)]
-#   # convert long df to a list
-#   kegg_pathsList <- split(kegg_paths$gNames, kegg_paths$pNames)
-#   # remove NAs from gene names 
-#   kegg_pathsList <- lapply(kegg_pathsList, function(X) X[!is.na(X)])
-#   kegg_pathsList <- lapply(kegg_pathsList, unique)
-#   
-#   
-#   # create gene set collection
-#   keggPath_genesets <- lapply( seq(kegg_pathsList) , function( jj ) {
-#     GeneSet( kegg_pathsList[[jj]], 
-#              setName= names(kegg_pathsList)[jj] ) } )
-#   keggPath_genesets <-  GSEABase::GeneSetCollection( keggPath_genesets )
-# 
-#   saveRDS( keggPath_genesets , file="keggPath_genesets.13.05.2024.rda")
-#   
-# }
-
-
-####======== ENRICHr - web-based tool ===================
-## http://amp.pharm.mssm.edu/Enrichr/
-
-
 
 ####======== barplots for annotation results ==========
     # clustered barplot for robertGO results     
@@ -401,119 +322,7 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
   return(ggl)
 }
 
-    # barplot for SPIA results     
-      SPIA_barplot_clustered <-  function(iid=iids, 
-                                          SPIAtoPlot= list(KEGG.spia_common,REACT.spia_common) ,
-                                          SPIA_strictBkg_KEGG=SPIA_strictBkg_KEGG,
-                                          SPIA_strictBkg_REACT= SPIA_strictBkg_REACT,
-                                          labelTRUNK=T,
-                                          typeSig=T)
-      {
-        ## * iids - a numeric vector, defining which elements of datGO list to plot as columns of the barplot
-        ## * SPIAtoPlot - a list of 2 charchter vectors of 1) KEGG and 2) SPIA 
-        ## * datSPIA - a dataframe with results of runSPIA()
-        ## * oorder - a charachter vector, defining order in which datasets (in columns) appear on the plot
-        ## * labelTRUNK - logical value, if labels should be shorten
-        ## * typeSig - logical value, whether to split rows by Ontology type of universality of terms
-        require(colorspace)
-        library(GeneOverlap)
-        
-        ## combine reactome and kegg
-        KFO.all_spia.both <- Reduce( rbind, c( SPIA_strictBkg_KEGG[iids] , 
-                                               SPIA_strictBkg_REACT[iids] )  )
-        
-        # add database type 
-        KFO.all_spia.both$dbase <- c( rep("KEGG", sum(sapply(SPIA_strictBkg_KEGG[iids], nrow))), 
-                                      rep("REACTOME", sum(sapply(SPIA_strictBkg_REACT[iids], nrow))))
-        KFO.all_spia.both$dataset <-c( rep.int( names(SPIA_strictBkg_KEGG)[iids] , 
-                                                times= sapply(SPIA_strictBkg_KEGG[iids] , nrow)),
-                                       rep.int( names(SPIA_strictBkg_REACT)[iids] , 
-                                               times= sapply(SPIA_strictBkg_REACT[iids] , nrow)))
-        # order columns
-        KFO.all_spia.both$dataset <- factor( KFO.all_spia.both$dataset, 
-                                             levels = names(SPIA_strictBkg_REACT)[iids])
-        
-        
-        ### cluster for similarity of paths
-        {
-          # table of similarity
-          Plist <- c( kegg_pathsList[ names(kegg_pathsList)%in% SPIAtoPlot[[1]]], 
-                      reactPath_gName[ names(reactPath_gName)%in% SPIAtoPlot[[2]]])
-          MM<- newGOM( Plist , Plist ,genome.size=10000)
-          MMpval <- getMatrix(MM, name="pval")
-          MMpval[MMpval==0] <- NA
-          diag(MMpval) <- NA
-          MMpval <- -log10(MMpval)
-          
-          ## plot
-          rownames(MMpval)<- colnames(MMpval) <- make.unique( rownames(MMpval))
-          toPlot <- MMpval  
-          
-          # pdf( width =  12 , height = 9, file="gseaKEGG.REACT.top3_pvalHeat.clust.pdf")
-          # a<-dev.cur()
-          # png( width =  1200 , height = 800 , file="gseaKEGG.REACT.top3_pvalHeat.clust.png")
-          # dev.control("enable")
-          gsea.order <- gplots::heatmap.2( toPlot,
-                                           col = RColorBrewer::brewer.pal( name = "Greens", n=9), 
-                                           trace = "none", symkey=T,
-                                           na.color = "#00441B",
-                                           dendrogram = "row",margins = c(2,20) ,
-                                           labCol = FALSE, cexRow= 1.2,
-                                           RowSideColors = ifelse( rownames(MMpval) %in% SPIAtoPlot[[1]] ,
-                                                                   "royalblue" ,"violet" ),
-                                           ColSideColors = map2color(log10(sapply( Plist , length)),
-                                                                     pal = gray.colors(9, rev = T)))
-          # dev.copy(which=a)
-          # dev.off()
-          # dev.off()
-          print(dim(toPlot))
-          
-        }
-        
-        datTOplot <- KFO.all_spia.both[
-          (KFO.all_spia.both$Name %in% SPIAtoPlot[[1]] & 
-             KFO.all_spia.both$Name %in% names(kegg_pathsList)&
-             KFO.all_spia.both$dbase=="KEGG") |
-          (KFO.all_spia.both$Name %in% SPIAtoPlot[[2]] &
-             KFO.all_spia.both$Name %in% names(reactPath_gName)&
-             KFO.all_spia.both$dbase=="REACTOME"),]
 
-        # # reorder levels
-        # datTOplot$dataset <- factor( datTOplot$dataset,
-        #                              levels = datOrder)
-        datTOplot$Name <- factor( as.factor(datTOplot$Name) ,
-                                  levels= rownames(MMpval)[(gsea.order$rowInd)])
-        # truncate labels
-        if( isTRUE(labelTRUNK)) levels(datTOplot$Name) <- sapply( levels(datTOplot$Name) , str_trunc, width = 40)
-        print(dim(datTOplot))
-        
-        # # reorder Term using order of GO IDs from the clustering
-        # datTOplot$Name <- as.factor( datTOplot$Name)
-        # datTOplot$Name <-  factor( datTOplot$Name,
-        #                            levels=unique(datTOplot$Name[order(datTOplot$GO.ID)]), ordered=TRUE)
-        # 
-        # limit x axis
-        datTOplot$log10.pG <- -log10(datTOplot$pG)
-        datTOplot$log10.pG[ datTOplot$log10.pG>10] <- 10 
-        
-        # plot
-        gg<- ggplot(datTOplot, aes(
-          x= log10.pG , 
-          y= Name , 
-          fill=Status)) + 
-          scale_fill_manual( values = c("#E69F00","#56B4E9")) + 
-          # scale_fill_colorblind() + 
-          xlab("-log10(pG)")+
-          geom_bar(stat = "identity") + ylab("pathways")+
-          facet_grid(cols = vars(dataset), 
-                     # rows = vars(dbase), 
-                     scales = "free_y", space = "free")+
-          theme_bw() + theme( text = element_text(size = 24, face = "bold" ),
-                              axis.text.y = element_text(face = "plain" ),
-                              axis.text.x = element_text(size = 16)) 
-        
-        return(gg)
-      }
       
 ####======== 2D plots ==========
 
@@ -700,13 +509,13 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
         require( ggrepel )
         
         # get GO terms significant in at least one stage
-        X <- union(fgsea_res[[ids[1]]]$pathway[ which(fgsea_res[[ids[1]]]$pval < thrsh)],
-                   fgsea_res[[ids[2]]]$pathway[ which(fgsea_res[[ids[2]]]$pval < thrsh )] )
+        X <- union(gsea_list[[ids[1]]]$pathway[ which(gsea_list[[ids[1]]]$pval < thrsh)],
+                   gsea_list[[ids[2]]]$pathway[ which(gsea_list[[ids[2]]]$pval < thrsh )] )
         
         # get mean LFC for the terms of interest
         fgsea_NES <- data.frame( 
-          early= fgsea_res[[ids[1]]]$NES[  match(X ,fgsea_res[[ids[1]]]$pathway ) ],
-          late= fgsea_res[[ids[2]]]$NES[  match(X ,fgsea_res[[ids[2]]]$pathway ) ])
+          early= gsea_list[[ids[1]]]$NES[  match(X ,gsea_list[[ids[1]]]$pathway ) ],
+          late= gsea_list[[ids[2]]]$NES[  match(X ,gsea_list[[ids[2]]]$pathway ) ])
         fgsea_NES[is.na(fgsea_NES)]<- 0 
         fgsea_NES <- fgsea_NES[rowSums(fgsea_NES!=0)>0,]
         fgsea_NES$pathway <- X
@@ -725,10 +534,10 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
       
           ## add size
          logP <- -log10( cbind( 
-           fgsea_res[[ids[1]]]$pval[ 
-              match( X , fgsea_res[[ids[1]]]$pathway ) ], 
-           fgsea_res[[ids[2]]]$pval[
-              match( X , fgsea_res[[ids[2]]]$pathway ) ] 
+           gsea_list[[ids[1]]]$pval[ 
+              match( X , gsea_list[[ids[1]]]$pathway ) ], 
+           gsea_list[[ids[2]]]$pval[
+              match( X , gsea_list[[ids[2]]]$pathway ) ] 
           ) )
          
           logP[ is.na(logP)]<- 0
@@ -777,56 +586,7 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
         } else {
           print("no correlation")
           
-          # GO_meanLFC.sn_test <- apply( meanLFCdat[,ids], 2, function(values)
-          # {
-          #   # Calculate the empirical cumulative distribution function
-          #   ecdf_function <- ecdf(values)
-          #   
-          #   # Calculate p-values for each value in the vector
-          #   p_values <- sapply(values, function(x) {
-          #     # Two-tailed test: P-value is 2 times the smallest tail probability
-          #     min(ecdf_function(x), 1 - ecdf_function(x)) * 2
-          #   })
-          #   
-          #   # Print the calculated p-values
-          #   return(p_values)
-          # })
-          # 
-          # 
-          # # labels
-          # GOrobert_LFC$GOlabel <- ifelse( 
-          #   rownames( GOrobert_LFC ) %in% rownames(GO_meanLFC.sn_test)[
-          #     rowSums(GO_meanLFC.sn_test<0.05)>0 ] ,
-          #   as.character(GOrobert_LFC$Primary), "")
-          # 
-          # # add size
-          # GOrobert_LFC$size <- sapply( rownames(GOrobert_LFC), 
-          #                              function(X) length( unique( go2gName[[X]] )))
-          # 
-          # 
-          # 
-          # 
-          # # add type of GO
-          # GOrobert_LFC$GOtype <-  ifelse(   rownames( GOrobert_LFC ) %in% rownames(GO_meanLFC.sn_test)[
-          #   rowSums(GO_meanLFC.sn_test<0.05)>0 ]  ,
-          #   as.character(  Ontology(GOTERM)[rownames(GOrobert_LFC)]), " ")
-          # 
-          # # plot
-          # gg <-  ggplot( GOrobert_LFC , aes(x= early ,y= late) ) +  
-          #   geom_point(aes( size = size ,  color= GOtype ), shape=21, stroke = 2) + 
-          #   scale_color_manual( values = c("BP" ="#D55E00", "CC" ="#009E73", 
-          #                                  "MF" ="#0072B2", " " = "grey" ) )+
-          #   geom_hline(yintercept=0, linetype="dashed", color = "black")+
-          #   geom_vline(xintercept=0, linetype="dashed", color = "black")+
-          #   scale_size(range = c(1, 30)) +  # adjust range of bubbles sizes
-          #   geom_text_repel( aes(label = GOlabel ,colour=GOtype), 
-          #                    max.overlaps=150, cex=3 ,
-          #                    max.time	=200) + #ensure that labels are not jammed together
-          #   xlab(paste("mean log2FC of GO at", contrasts[1],"weeks", sep = " ")) + 
-          #   ylab(paste("mean log2FC of GO at", contrasts[2],"weeks", sep = " ")) + 
-          #   ggtitle(paste( "activity changes in GO terms\n",
-          #                  dataName, sep = "")) + theme_bw()+
-          #   theme( text = element_text(size = 24))
+        
         }
         
         
