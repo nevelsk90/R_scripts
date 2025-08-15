@@ -161,7 +161,7 @@ sf.clusterGoByGeneset = function( gomatrix, geneset, universe, geneAlias=NULL,
     
     gosil = as.matrix( silhouette( cutree(goclust, h = cut_max + 0.5), godist ) )
     
-    if(!is.na(gosil)) {
+    if( length(gosil)>1 ) {
       rownames(gosil) = goclust$labels
       sindex = mean( as.matrix( silhouette( cutree(goclust, h = cut_max + 0.5), godist ) )[,3] )
     } else {
