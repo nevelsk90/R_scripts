@@ -3,9 +3,6 @@
 #=================================================================#
 options(connectionObserver = NULL)
 
-.libPaths( c( "/home/tim_nevelsk/R/x86_64-pc-linux-gnu-library/4.0", 
-              "/media/tim_nevelsk/WD_tim/SOFT/R" ) )
-
 source("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/justGO_ROBERT.R")  
 
 source("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/usefulRfunc.r")
