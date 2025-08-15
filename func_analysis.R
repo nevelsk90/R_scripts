@@ -171,7 +171,7 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
         
        
         # log transform p-values
-        datTOplot$log10.Fisher <- -log10(datTOplot$Fisher)
+        datTOplot$log10.Fisher <- log10(datTOplot$Fisher) * -1
         
         # don't plot lfc for nonsig terms
          datTOplot$LFC <- ifelse( datTOplot$Fisher <0.05, datTOplot$LFC ,NA )
