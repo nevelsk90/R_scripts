@@ -30,16 +30,15 @@ esmbID2entr <- getBM( attributes=c('ensembl_gene_id',
                                   "entrezgene_id" ) ,  mart = mart_mouse )
 
 ## load collection of pathways
-pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
-
+pathDB <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/annotation_data/pathDB.rds"))
 
 ####======== GO ANALYSIS ===========####
 ### prepare GO annotations
   {
   #  get all unique genes AND genes of child terms
-  go2ensemble <- readRDS( file="/media/tim_nevelsk/WD_tim/ANNOTATIONS/GO/go2ensemble.rda" )
+  go2ensemble <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/annotation_data/go2ensemble.rds"))
     
-  go2gName  <- readRDS( file="/media/tim_nevelsk/WD_tim/ANNOTATIONS/GO/go2gName.rda")
+  go2gName  <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/annotation_data/go2gName.rds"))
   go2gName <- lapply(go2gName, function(X) X[!is.na(X)])
   go2gName <- go2gName[ sapply(go2gName, length)> 0 ]
 
@@ -62,7 +61,7 @@ pathDB <- readRDS( "/media/tim_nevelsk/WD_tim/ANNOTATIONS/Pathways/pathDB.rda")
   # # 31.08.23
   # saveRDS(gomatrix, file="/media/tim_nevelsk/WD_tim/ANNOTATIONS/GO/gomatrix.31.08.23.rda")
     
-    gomatrix <- readRDS("/media/tim_nevelsk/WD_tim/ANNOTATIONS/GO/gomatrix.31.08.23.rda")
+    gomatrix <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/master/annotation_data/gomatrix.31.08.23.rds"))
 
 
 }
