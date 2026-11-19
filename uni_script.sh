@@ -31,7 +31,7 @@ find /data/user/tpadvits/ws/Podocyte_data/RNA_seq/martin_may_2016 -type f -name 
 	bamToBed -i 569_16878_ChipWt1wtF0513Rep3_mm9.bam > 569_16878_ChipWt1wtF0513Rep3_mm9.bed
 
 ### use of modified Michael Chip-seq pipeline
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/runPeakCalling_pipeline_human.slurm 29 Padvitski02.01_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSW.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSX.fastq.gz /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCS_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCU_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCW_ctl.fastq.gz /data/public/tpadvits/global_data/hg19/hg19 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/processedBATF
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/runPeakCalling_pipeline_human.slurm 29 Padvitski02.01_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSW.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSX.fastq.gz /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCS_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCU_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000OCW_ctl.fastq.gz /data/public/tpadvits/global_data/hg19/hg19 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/processedBATF
 
 
 # to run fastQC from any location
@@ -51,9 +51,9 @@ samtools merge /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RelB_merged.bam 
 samtools merge /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/P52AB/p52Ab_merged.bam /data/user/tpadvits/ws/Janis_PJdata/Chip-seq/harvard2cologne/p52Ab_R1.bam /data/user/tpadvits/ws/Janis_PJdata/Chip-seq/harvard2cologne/p52Ab_R2.bam
 
 #### run MACS2 separately
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam Padvitski19.01_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELB/RelB_merged.bam Padvitski19.01_RELB_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELB
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/P52AB/p52Ab_merged.bam Padvitski19.01_P52AB_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/P52AB
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam Padvitski19.01_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELB/RelB_merged.bam Padvitski19.01_RELB_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELB
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/ctrl_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/P52AB/p52Ab_merged.bam Padvitski19.01_P52AB_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/P52AB
 
 
 fastq-dump --outdir ~/ws/Podocyte_data/RNA_seq/WT1_RNAseq --split-3 --skip-technical -I -W  SRR1703430
@@ -79,17 +79,17 @@ done
 
 ##### chip-seq analysis with IgG controls
 #######################################################################  
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/runPeakCalling_pipeline_human.slurm 29 Padvitski31.01_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSW.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSX.fastq.gz /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/EP300/ENCFF000VWD_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/EP300/ENCFF000VWK_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RAD21/ENCFF000VWF_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RAD21/ENCFF000VWH_ctl.fastq.gz /data/public/tpadvits/global_data/hg19/hg19 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_IgG
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/runPeakCalling_pipeline_human.slurm 29 Padvitski31.01_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSW.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/BATF/ENCFF000NSX.fastq.gz /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/EP300/ENCFF000VWD_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/EP300/ENCFF000VWK_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RAD21/ENCFF000VWF_ctl.fastq.gz,/data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RAD21/ENCFF000VWH_ctl.fastq.gz /data/public/tpadvits/global_data/hg19/hg19 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_IgG
 
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_IgG/mapping/ctrl_filtered.bam  Padvitski31.01_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedRELA_IgG
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_IgG/mapping/ctrl_filtered.bam  Padvitski31.01_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedRELA_IgG
 
 
 
 ##### chip-seq analysis with Snyder inputDNA controls
 #######################################################################
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/sample_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedCEBPZ/mapping/ctrl_filtered.bam  Padvitski01.02_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_inputSny
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF/mapping/sample_filtered.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedCEBPZ/mapping/ctrl_filtered.bam  Padvitski01.02_BATF_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedBATF_inputSny
 
-sbatch /cellfile/datapublic/tpadvits/PROJECTS/Side/Janis_TF/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedCEBPZ/mapping/ctrl_filtered.bam  Padvitski01.02_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedRELA_inputSny
+sbatch /cellfile/datapublic/tpadvits/PROJECTS/Janis_TF/Code/chip-seq-peak-calling_public/bin/stepwise/runMACS2.slurm /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/RELA/RelA_R1.bam /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedCEBPZ/mapping/ctrl_filtered.bam  Padvitski01.02_RELA_wt_GM12878 /data/public/tpadvits/PROJECTS/Janis_TF/Chip_seq/processedRELA_inputSny
 
 
 
