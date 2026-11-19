@@ -261,7 +261,7 @@ pathDB <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/mas
   
   
   ### create a data-frame for the barplot
-  datTOplot <- Reduce( rbind, lapply( iids, function(ii){
+  datTOplot.l <-lapply( iids, function(ii){
     print(ii)
     datt <-  dat.fgsea[[ii]]
     datt <-  datt[  datt$pathway %in% pathToPlot , ]
@@ -269,9 +269,9 @@ pathDB <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/mas
     datt <- as.data.frame(datt)
     datt <- datt[ ,colnames(datt)!="leadingEdge"]
     return(datt)
-  }))
+  })
   
-  
+  datTOplot <- Reduce( rbind, datTOplot.l)
   # reorder levels
   if( exists("datOrder")) datTOplot$test <- factor( datTOplot$test ,
                                                        levels = datOrder)
@@ -315,7 +315,9 @@ pathDB <- readRDS(url("https://raw.githubusercontent.com/nevelsk90/R_scripts/mas
                             # align = "h", 
                             nrow = 1, rel_widths = c( 10,1))
   
-  return(ggl)
+  ll <- list( ggl, datTOplot.l, levels.order)
+  names(ll) <- c( "plot", "data", "labels")
+  return(ll)
 }
 
 

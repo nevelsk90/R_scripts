@@ -503,7 +503,7 @@ TF_motifEnrichTest <- function( gset =   c("Wt1","Nphs2","Lmx1b","Podxl","Thsd7a
                                 bckgrGenes = "all" ,
                                 scoreMethod = "fisher", 
                                 motifDir = "/media/tim_nevelsk/WD_tim/ANNOTATIONS/CISBP/CISBP2mouse_podoTF_08.01.24.meme",
-                                outDir = "/home/tim_nevelsk/PROJECTS/PODOCYTE/DiseaseScore/PDS_pseudotime/TFreg/AME_motifAnalysis/")
+                                outDir = "/cellfile/PROJECTS/damage_scores/podocyte_damage_score_TimPadvitski/Output/00_legacy_unassigned/from_F/PODOCYTE_nonWD/DiseaseScore/PDS_pseudotime/TFreg/AME_motifAnalysis/")
   {
   ### gset - a charachter vector, containing gene names
   ### bckgrGenes - genes to use as the background

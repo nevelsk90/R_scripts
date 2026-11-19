@@ -1,0 +1,10 @@
+# local only: third-party code without clear licence, or project-specific scripts sourced by path
+wks_konstantina.r
+wks_manual_upd.pdf
+Cluster_script.r
+run_job.r
+fragLength_plots.r
+diseaseScore.r
+Pipelines/old_pipes.zip
+.Rhistory
+.~lock.*
