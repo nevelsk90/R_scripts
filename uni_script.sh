@@ -118,7 +118,7 @@ PATH=$PATH:~/BIOSOFT/kallisto_linux-v0.43.0
 kallisto index -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx /data/public/tpadvits/global_data/Genome_annot/c_elegans/Caenorhabditis_elegans.WBcel235.cdna_ncRNA.all.fa
 
 
-data_dir=/cellfile/datapublic/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_polyA/raw_data
+data_dir=/cellfile/DATASETS/C_Elegans/Whole_organism/Transcriptomics/Bulk/In_house/RNAseq_aging_timecourse_polyA/Data/fastq
 cd $data_dir
 samples=$(find * -type f -name "*_1_sequence*")
 for fq in $samples;
@@ -126,21 +126,21 @@ do
   fq2=${fq/_1_sequence/_2_sequence}
   dirname=${fq/_1_sequence.fq.gz/_counted}
   echo $dirname
-  kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /data/public/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_ribominus/Kallisto_quant/$dirname -b 100 --bias -t 8 $fq $fq2
+  kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /cellfile/datapublic/tpadvits/PROJECTS/MSc_thesis_TimPadvitski/Output/kallisto_timecourse_ribominus/$dirname -b 100 --bias -t 8 $fq $fq2
 done
 
 # single-end library
-data_dir=/cellfile/datapublic/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_polyA/raw_data
+data_dir=/cellfile/DATASETS/C_Elegans/Whole_organism/Transcriptomics/Bulk/In_house/RNAseq_aging_timecourse_polyA/Data/fastq
 cd $data_dir
 samples=$(find * -type f)
 for fq in $samples;
 do
   dirname=${fq/.fastq.gz/_counted}
   echo $dirname
-  kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /data/public/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_polyA/Kallisto_quant/$dirname --single -l 96 -s 1 -b 100 --bias -t 8 $fq
+  kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /cellfile/datapublic/tpadvits/PROJECTS/MSc_thesis_TimPadvitski/Output/kallisto_timecourse_polyA/$dirname --single -l 96 -s 1 -b 100 --bias -t 8 $fq
 done
 
-kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /cellfile/datapublic/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_polyA --single -l 96 -s 1 --rf-stranded -b 100 --bias -t 8 /cellfile/datapublic/tpadvits/PROJECTS/MSc/timeseries_RNAseq/timeseries_polyA/raw_data/polyA_N2day1_rep1.fastq.gz
+kallisto quant -i /data/user/tpadvits/BIOSOFT/kallisto_linux-v0.43.0/Celegans.WBcel235.cdna_ncRNA.all.idx -o /cellfile/datapublic/tpadvits/PROJECTS/MSc_thesis_TimPadvitski/Output/kallisto_timecourse_polyA/polyA_N2day1_rep1 --single -l 96 -s 1 --rf-stranded -b 100 --bias -t 8 /cellfile/DATASETS/C_Elegans/Whole_organism/Transcriptomics/Bulk/In_house/RNAseq_aging_timecourse_polyA/Data/fastq/polyA_N2day1_rep1.fastq.gz
 
 ###########################
 ## build bowtie indexes for mouse
