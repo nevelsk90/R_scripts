@@ -22,9 +22,9 @@
 #module load R-3.6.0
 
 #CMD="/cellfile/datapublic/tpadvits/PROJECTS/utility.SCRIPTS/Pipelines/bwaANDqc_raw.sh"
- bash /cellfile/datapublic/tpadvits/PROJECTS/PodocytePJ/DATA/RNA_seq/STAR2.7bulk_mapp.sh
+ bash /cellfile/PROJECTS/podocyte_wt1_trn/wt1_manuscript_TimPadvitski/Code/preprocessing/mapping_2022/STAR2.7bulk_mapp.sh
 # bash /cellfile/PROJECTS/podocyte_wt1_trn/trn_inference_TimPadvitski/Code/archive/MiraldiWay/priorGenerator_MiraldiGRN.sh
-# bash /cellfile/datapublic/tpadvits/PROJECTS/PodocytePJ/DATA/RNA_seq/QC_kallistoBUS_scRNAseq.sh
+# bash /cellfile/PROJECTS/podocyte_wt1_trn/wt1_manuscript_TimPadvitski/Code/preprocessing/mapping_2022/QC_kallistoBUS_scRNAseq.sh
 # bash /cellfile/PROJECTS/podocyte_wt1_trn/trn_inference_TimPadvitski/Code/archive/MiraldiWay/Genrich.sh
 # setenv("R_LIBS_USER","/cellfile/datapublic/tpadvits/SOFT/RLibs/R-3.4.2/")
 # module load R
